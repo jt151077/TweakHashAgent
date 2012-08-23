@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="initApp()">
+	
+	<fx:Metadata>
+		[ResourceBundle("resources")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.seesmic.as3.xmpp.JID;
+			import com.seesmic.as3.xmpp.StreamEvent;
+			import com.seesmic.as3.xmpp.XMPP;
+			import com.seesmic.as3.xmpp.XMPPEvent;
+			import com.seesmic.as3.xmpp.xep.muc.MUC;
+			
+			import mx.events.FlexEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			private static const tagsArray:Array = new Array("#østerrike", "#ungarn", "#england", "#frankrike", "#tyskland", "#italia", "#russland", "#tyrkia", "#historie");
+			
+			private var conn:XMPP;
+			private var user:String;
+			
+			protected function initApp():void {
+				conn = new XMPP();
+				conn.auto_reconnect = false;
+				
+				conn.setJID(resourceManager.getString('resources', 'HASH_AGENT')+"@"+resourceManager.getString('resources', 'SERVER_HOST')+"/"+resourceManager.getString('resources', 'HASH_AGENT'));
+				conn.setPassword(resourceManager.getString('resources', 'HASH_AGENT'));
+				conn.setServer(resourceManager.getString('resources', 'SERVER_HOST'));
+				conn.addEventListener(XMPPEvent.SESSION, handleSession);
+				
+				conn.addPlugin(new MUC());
+				
+				conn.connect();
+			}
+			
+			private final function handleSession(e:XMPPEvent):void {
+				conn.addEventListener(XMPPEvent.MESSAGE_MUC, handleMUCMessage);
+				conn.plugin['muc'].joinRoom('conference.imediamac19.uio.no', 'tweakfelles', resourceManager.getString('resources', 'HASH_AGENT'));
+			}
+			
+			private function handleMUCMessage(e:XMPPEvent):void {
+				if(!e.stanza.body) {
+					return;
+				}
+				
+				var roomjid:JID = JID(e.stanza.from);
+				var mess:String = "Message: from "+e.stanza.from + "\n**********************";
+				
+				var cstate:String = null;
+				var newMess:Boolean = true;
+				
+				if(roomjid.getResource() != "") {
+					var xm:XML = e.stanza.xml as XML;
+					for each (var i:XML in xm.elements()) {
+						if(i.name() == "urn:xmpp:delay::delay") {
+							newMess = false;
+						}
+					}
+				}
+				else {
+					cstate = "info";
+				}
+				
+				if(cstate != "info" && newMess) {
+					var content:String = new String(e.stanza.body).toLowerCase();
+					
+					for each (var tag:String in tagsArray) {
+						if(content.indexOf(tag) > -1) {
+							mess = mess+"\nFound tag: "+tag;
+							mess = mess+"\n"+content+"\n**********************";
+							postMessageToService(tag.substr(1), new String(e.stanza.body), new String(e.stanza.from.resource));
+							outputArea.text =  mess + "\n" + outputArea.text;
+						}
+					}
+				}
+			}
+			
+			protected function postMessageToService(land:String, mess:String, creator:String):void {
+				var urlRequest:URLRequest = new URLRequest(resourceManager.getString('resources', 'SERVICE_HOST')+"/tweakTweet");
+				urlRequest.method = URLRequestMethod.POST;
+				urlRequest.contentType = "application/json";
+				var params:Object = new Object();
+				if(land == "østerrike" || land == "ungarn") {
+					params.country = "ungarrike";
+				}
+				else {
+					params.country = land;
+				}
+				params.content = mess;
+				params.creator = creator;
+				urlRequest.data = com.adobe.serialization.json.JSON.encode(params);
+				var loader:URLLoader = new URLLoader();
+				loader.addEventListener(Event.COMPLETE, completeHandler);
+				loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				loader.addEventListener(HTTPStatusEvent.HTTP_STATUS, httpStatusHandler);
+				loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+				loader.load(urlRequest);
+			}
+			
+			private function securityErrorHandler(ev:SecurityErrorEvent):void {
+				trace("Security bubu");
+			}
+			
+			private function httpStatusHandler(ev:HTTPStatusEvent):void {
+				trace(ev.status);
+			}
+			
+			private function ioErrorHandler(ev:IOErrorEvent):void {
+				trace(ev.text);
+			}
+			
+			private function completeHandler(ev:Event):void {
+				trace(ev);
+			}
+			
+			protected function getCountries_faultHandler(event:FaultEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- <s:HTTPService id="getCountries" url="{SERVICE_HOST+'getCountries'}" result="getCountries_resultHandler(event)" fault="getCountries_faultHandler(event)" resultFormat="text" method="GET" /> -->
+	</fx:Declarations>
+	
+	
+	<s:TextArea top="10" left="10" right="10" bottom="10" id="outputArea" />
+</s:WindowedApplication>
