@@ -41,7 +41,7 @@
 			
 			private final function handleSession(e:XMPPEvent):void {
 				conn.addEventListener(XMPPEvent.MESSAGE_MUC, handleMUCMessage);
-				conn.plugin['muc'].joinRoom('conference.imediamac19.uio.no', 'tweakfelles', resourceManager.getString('resources', 'HASH_AGENT'));
+				conn.plugin['muc'].joinRoom('conference.'+resourceManager.getString('resources', 'SERVER_HOST'), resourceManager.getString('resources', 'ROOM_NAME'), resourceManager.getString('resources', 'HASH_AGENT'));
 			}
 			
 			private function handleMUCMessage(e:XMPPEvent):void {
