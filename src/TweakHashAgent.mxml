@@ -50,7 +50,7 @@
 				}
 				
 				var roomjid:JID = JID(e.stanza.from);
-				var mess:String = "Message: from "+e.stanza.from + "\n**********************";
+				var mess:String = "Message: from "+ e.stanza.from + "\n**********************";
 				
 				var cstate:String = null;
 				var newMess:Boolean = true;
